@@ -1,0 +1,260 @@
+---
+title: "Covid_19 Pandemic"
+author: "Agbasi Ikechukwu Christian"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+![Covid_19](https://cdn.who.int/media/images/default-source/mca/mca-covid-19/coronavirus-2.tmb-479v.jpg?sfvrsn=4dba955c_12%20479w)  
+
+### Introduction  
+The World Health Organization (WHO) declared the novel human corona virus disease (COVID-19) outbreak, which began in Wuhan China on December 8, 2019, a Public Health Emergency of International Concern (PHEIC) on January 30, 2020 (WHO, 2020)The data is gotten from [Our world in data](https://ourworldindata.org/) and the data set can be downloaded from [here](https://ourworldindata.org/covid-deaths)
+
+### Installing and loading of necessary R packages  
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(scales)
+```
+
+#### Import the dataset  
+
+```{r}
+covid_19_data <- read.csv("owid-covid-data.csv")
+```
+
+#### Data cleaning and processing  
+
+```{r}
+colnames(covid_19_data)
+```
+
+```{r results='hide'}
+str(covid_19_data)
+```
+ 
+ **Create a dataframe with the needed columns needed**  
+ 
+```{r}
+Covid19_data_v2 <- covid_19_data %>% 
+  select(c(continent,location,date,total_cases,new_cases,total_deaths,new_deaths
+,total_tests,new_tests,total_vaccinations,people_vaccinated,people_fully_vaccinated
+,total_boosters,gdp_per_capita,life_expectancy,population))
+```
+ 
+```{r}
+colnames(Covid19_data_v2)
+```
+
+**Visualization of some of the column to check for over aggregated values and their subsequent removals**  
+
+```{r}
+unique(Covid19_data_v2$location)
+```
+
+```{r}
+unique(Covid19_data_v2$continent)
+```
+
+**Removal of some data from the location(countries) column**  
+
+```{r}
+Covid19_data_v2 = filter(Covid19_data_v2, !(location %in% c("Africa", "Asia","Europe","International","Lower middle income","North America","South America","Upper middle income","World","United Kingdom","Low income","Oceania","High income","European Union")))
+```
+
+**Removal of some data from the continent column**  
+
+```{r}
+Covid19_data_v2 = filter(Covid19_data_v2, !(continent %in% c("")))
+```
+
+#### Data Processing  
+
+ **aggregate the data on days, weeks and months**  
+ 
+```{r}
+Covid19_data_v2$date<- as.Date(Covid19_data_v2$date) 
+Covid19_data_v2$Year <- format(as.Date(Covid19_data_v2$date), "%Y")
+Covid19_data_v2$Month <- format(as.Date(Covid19_data_v2$date), "%B")
+Covid19_data_v2$day_of_the_week <- format(as.Date(Covid19_data_v2$date),"%A")
+```
+
+**Data are now stored and aggregated ready for analysis**  
+
+* total number of people tested
+
+```{r}
+Covid19_data_v2 %>%  
+  summarise(TotalTest = sum(new_tests, na.rm = TRUE))
+```
+
+* Total number of cases record  
+
+```{r}
+Covid19_data_v2 %>% 
+  summarise(TotalCases = sum(new_cases,na.rm=TRUE))
+```
+
+* Total number of Deaths  
+
+```{r}
+TotalDeath <- TotalDeath <- Covid19_data_v2 %>% 
+  summarise(TotalDeath = sum(new_deaths,na.rm = TRUE))
+```
+
+* Total number of deaths each year  
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(Year) %>% 
+  summarise(NumberOfCases = sum(new_cases, na.rm = TRUE))
+```
+
+* Total number of deaths in every continent each year  
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(Year,continent) %>% 
+  summarise(NumberOfDeath = sum(new_deaths, na.rm = TRUE)) %>% 
+  arrange(desc(NumberOfDeath))
+```
+
+* Number of cases in every Months  
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(Month) %>% 
+  summarise(NumberOfCases = sum(new_cases, na.rm = TRUE))
+```
+
+* Number of cases by each day of the week  
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(day_of_the_week) %>% 
+  summarise(NumberOfCases = sum(new_cases, na.rm = TRUE))
+```
+
+* Percentage of covid_19 case likely leading to Death of the victim in every continent
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(continent) %>% 
+  summarise(covid_death = sum(new_deaths ,  na.rm = TRUE), covid_cases = sum(new_cases,  na.rm = TRUE), deathpercent = (covid_death / TotalDeath) * 100 ) %>% 
+  arrange(desc(covid_death))
+```
+
+* Percentage of covid_19 case likely leading to Death of the victim in every country  
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(location) %>% 
+  filter(!location == "North Korea") %>% 
+  summarise(covid_death = sum(new_deaths ,  na.rm = TRUE), covid_cases = sum(new_cases,  na.rm = TRUE), deathpercent = (covid_death / covid_cases) * 100) %>% 
+  arrange(desc(deathpercent)) %>% 
+  print(n = 234)
+```
+
+* percentage of test coming out positive from each continent 
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(continent) %>% 
+  summarise(totalCases = sum(new_cases,na.rm = TRUE), totalTest = sum(new_tests,na.rm = TRUE), TestpercentagePositive = (totalCases / totalTest) * 100) %>% 
+  arrange(desc(TestpercentagePositive))
+```
+
+* percentage of test coming out positive from each country  
+
+```{r}
+Covid19_data_v2 %>% 
+  group_by(location) %>% 
+  summarise(totalCases = sum(new_cases,na.rm = TRUE), totalTest = sum(new_tests,na.rm = TRUE), PositiveTestpercentage = (totalCases / totalTest) * 100) %>% 
+  arrange(desc(totalTest)) %>% 
+  print(n = 234)
+```
+
+* Correlation between people fully vaccinated and number of death  
+
+```{r}
+ Covid19_data_v2 %>% 
+   group_by(continent) %>% 
+   summarise(fullyVacp = mean(people_fully_vaccinated, na.rm = TRUE), death = mean(new_deaths,na.rm = TRUE)) %>% 
+   arrange(desc(death))
+```
+
+* correlation between countries population and covid_19 infections  
+
+```{r}
+ Covid19_data_v2 %>% 
+   group_by(location) %>% 
+   summarise(Covidcase = sum(new_cases,na.rm = TRUE),Population = mean(population)) %>% 
+   arrange(desc(Population)) %>% 
+   print(n = 234 )
+```
+
+
+####Data visualisation  
+
+```{r}
+Covid19_data_v2 %>% 
+   group_by(Year,continent) %>% 
+   summarise(NumberOfDeath = sum(new_deaths, na.rm = TRUE)) %>% 
+   ggplot(aes( x = Year, y = NumberOfDeath)) +
+   geom_line() + geom_point()+
+   labs(x = "Year",y = 'Number of deaths', title = "Total Number of covid-19 deaths by year", subtitle = "Covid-19 death by Year")
+```
+
+```{r}
+ Covid19_data_v2 %>% 
+   group_by(Year,continent) %>% 
+   summarise(NumberOfCases = sum(new_cases, na.rm = TRUE)) %>% 
+   ggplot(aes( x = Year, y =NumberOfCases , fill = continent)) +
+   geom_col(position = "dodge") +
+   scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+   labs(y ='Number of cases (millions)' , title = "Total Number of covid-19 cases by year", subtitle = "Covid-19 cases by Year")
+ 
+```
+
+```{r}
+Covid19_data_v2 %>% 
+   group_by(Month) %>% 
+   summarise(NumberOfCases = sum(new_cases, na.rm = TRUE)) %>% 
+   ggplot(aes( x = Month, y =NumberOfCases )) +
+   geom_col(position = "dodge") +
+   theme(axis.text.x = element_text(angle = 50, vjust = 0.5, hjust=1))+
+   scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+   labs(y ='Number of cases (millions)' ,title = "Total Number of covid-19 cases by Months", subtitle = "Covid-19 cases by Months")
+
+```
+
+```{r}
+ Covid19_data_v2 %>% 
+   group_by(continent) %>% 
+   summarise(covid_death = sum(new_deaths, na.rm = TRUE), covid_cases = sum(new_cases,  na.rm = TRUE), deathpercent = (covid_death / TotalDeath) * 100 ) %>% 
+   arrange(desc(covid_death)) %>% 
+   ggplot(aes( x = continent, y =covid_death)) +
+   geom_col(position = "dodge") +
+   labs(title = "Total Number of covid-19 cases by continents", subtitle = "Covid-19 death in each continent")
+```
+
+```{r}
+ Covid19_data_v2 %>% 
+   group_by(location) %>% 
+   summarise(TotalCovidcase = sum(new_cases,na.rm = TRUE),TotalPopulation = mean(population)) %>% 
+   ggplot(aes(x=TotalPopulation,y=TotalCovidcase)) +
+   scale_x_continuous(labels = function(x) format(x, scientific = FALSE))+
+   scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+   geom_point()+
+   labs( x ='Countries population', y='COvid cases (millions)', title = "Correlation between countries total population and number of covid infections", subtitle = "Total covid cases Vs countries population")
+ 
+```
+
+
+
